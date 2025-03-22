@@ -26,5 +26,8 @@ export default defineConfig({
         },
       },
     },
+    // Ensure index.html is copied to 404.html for client-side routing
+    assetsDir: 'assets',
+    emptyOutDir: true,
   },
 })
