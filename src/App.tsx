@@ -306,7 +306,11 @@ function App() {
   const [isViewingOther, setIsViewingOther] = useState(false);
 
   useEffect(() => {
-    const newSocket = io('http://localhost:3002', {
+    const serverUrl = import.meta.env.PROD 
+      ? 'https://drawing-game-server.onrender.com'
+      : 'http://localhost:3002';
+
+    const newSocket = io(serverUrl, {
       transports: ['websocket'],
       withCredentials: true
     });
