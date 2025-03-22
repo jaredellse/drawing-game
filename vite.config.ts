@@ -9,7 +9,7 @@ export default defineConfig({
     proxy: {
       '/socket.io': {
         target: process.env.NODE_ENV === 'production' 
-          ? 'https://your-production-server.com' 
+          ? 'https://drawing-game-server.onrender.com' 
           : 'http://localhost:3002',
         ws: true,
       },
