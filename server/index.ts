@@ -10,16 +10,25 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const httpServer = createServer(app);
+
+// Configure CORS based on environment
+const isDevelopment = process.env.NODE_ENV !== 'production';
+const clientURL = isDevelopment 
+  ? 'http://localhost:5173'
+  : 'https://jaredellse.github.io';
+
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:5175",
+    origin: clientURL,
     methods: ["GET", "POST"],
     credentials: true
   }
 });
 
-// Serve static files from the client build directory
-app.use(express.static(path.join(__dirname, '../dist')));
+// Serve static files from the client build directory in production
+if (!isDevelopment) {
+  app.use(express.static(path.join(__dirname, '../dist')));
+}
 
 interface User {
   id: string;
@@ -100,7 +109,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = 3002;
+const PORT = process.env.PORT || 3002;
 httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
 }); 
