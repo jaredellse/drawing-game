@@ -21,11 +21,17 @@ jobs:
         with:
           node-version: '18'
           
-      - name: Install dependencies
+      - name: Install client dependencies
         run: npm ci
         
-      - name: Build
+      - name: Install server dependencies
+        run: cd server && npm ci
+        
+      - name: Build client
         run: npm run build
+        
+      - name: Build server
+        run: cd server && npm run build
         
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
