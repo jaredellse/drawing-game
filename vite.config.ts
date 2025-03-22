@@ -12,11 +12,19 @@ export default defineConfig({
           ? 'https://drawing-game-server.onrender.com' 
           : 'http://localhost:3002',
         ws: true,
+        changeOrigin: true
       },
     },
   },
   build: {
     outDir: 'dist',
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+        },
+      },
+    },
   },
 })
