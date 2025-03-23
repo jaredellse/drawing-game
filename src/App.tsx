@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import './App.css';
 import { BrushIcon, PaletteIcon, CanvasIcon, ViewIcon, SplitIcon, VideoIcon, VideosIcon, TrashIcon } from './icons';
+import React from 'react';
 
 interface User {
   id: string;
@@ -392,7 +393,7 @@ function App() {
     };
   }, [socket, selectedUser]);
 
-  // Initialize canvas and context
+  // Initialize canvas and context with proper scaling
   useEffect(() => {
     const canvas = mainCanvasRef.current;
     if (!canvas) return;
@@ -402,10 +403,14 @@ function App() {
 
     const resizeCanvas = () => {
       const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
       
-      // Set canvas dimensions
-      canvas.width = rect.width;
-      canvas.height = rect.height;
+      // Set canvas size accounting for device pixel ratio
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      
+      // Scale the context to account for the device pixel ratio
+      ctx.scale(dpr, dpr);
       
       // Set drawing styles
       ctx.strokeStyle = selectedColor;
@@ -418,18 +423,22 @@ function App() {
     resizeCanvas();
 
     // Add resize and orientation change listeners
-    window.addEventListener('resize', resizeCanvas);
+    const handleResize = () => {
+      requestAnimationFrame(resizeCanvas);
+    };
+
+    window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', () => {
-      setTimeout(resizeCanvas, 100);
+      setTimeout(handleResize, 100);
     });
 
     // Set context
     setContext(ctx);
 
     return () => {
-      window.removeEventListener('resize', resizeCanvas);
+      window.removeEventListener('resize', handleResize);
       window.removeEventListener('orientationchange', () => {
-        setTimeout(resizeCanvas, 100);
+        setTimeout(handleResize, 100);
       });
     };
   }, [selectedColor, selectedBrushSize]);
@@ -448,22 +457,37 @@ function App() {
     if (!canvas) return null;
 
     const rect = canvas.getBoundingClientRect();
-    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
 
     if ('touches' in e) {
       const touch = e.touches[0];
       return {
-        x: touch.pageX - (rect.left + scrollLeft),
-        y: touch.pageY - (rect.top + scrollTop)
+        x: (touch.clientX - rect.left) * scaleX,
+        y: (touch.clientY - rect.top) * scaleY
       };
     } else {
       return {
-        x: e.pageX - (rect.left + scrollLeft),
-        y: e.pageY - (rect.top + scrollTop)
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
       };
     }
   };
+
+  // Memoize handlers to prevent re-renders
+  const handleColorClick = React.useCallback((color: string) => {
+    setSelectedColor(color);
+    if (context) {
+      context.strokeStyle = color;
+    }
+  }, [context]);
+
+  const handleBrushSizeChange = React.useCallback((size: number) => {
+    setSelectedBrushSize(size);
+    if (context) {
+      context.lineWidth = size;
+    }
+  }, [context]);
 
   // Handle drawing start
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -799,16 +823,22 @@ function App() {
   };
 
   const joinGame = async () => {
-    if (socket && userName) {
+    if (socket && userName.trim().length > 0) {  // Add length check
       try {
-        // Initialize camera with specific constraints for better compatibility
+        // Initialize camera with mobile-friendly constraints
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: 'user'
+            facingMode: 'user',
+            width: { ideal: 640 },  // Reduced size for mobile
+            height: { ideal: 480 }
           },
-          audio: true
+          audio: false  // Disable audio for now to reduce complexity
+        }).catch(() => {
+          // Fallback to basic constraints if detailed ones fail
+          return navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+          });
         });
         
         if (localVideoRef.current) {
@@ -828,14 +858,13 @@ function App() {
         socket.emit('requestConnections');
       } catch (err) {
         console.error('Error accessing camera:', err);
-        if (window.confirm('Could not access camera. Would you like to continue without video?')) {
-          socket.emit('join', {
-            name: userName,
-            color: '#' + Math.floor(Math.random()*16777215).toString(16)
-          });
-          setIsJoined(true);
-          setIsCameraOn(false);
-        }
+        // Join without video
+        socket.emit('join', {
+          name: userName,
+          color: '#' + Math.floor(Math.random()*16777215).toString(16)
+        });
+        setIsJoined(true);
+        setIsCameraOn(false);
       }
     }
   };
@@ -1017,14 +1046,6 @@ function App() {
     };
   }, [socket, localStream]);
 
-  // Update the color palette click handler
-  const handleColorClick = (color: string) => {
-    setSelectedColor(color);
-    if (context) {
-      context.strokeStyle = color;
-    }
-  };
-
   // Handle drawing events
   useEffect(() => {
     if (!socket) return;
@@ -1095,16 +1116,25 @@ function App() {
   }, [socket, selectedUser]);
 
   if (!isJoined) {
-  return (
+    return (
       <div className="join-screen">
         <h1>Join Drawing Game</h1>
-        <input
-          type="text"
-          value={userName}
-          onChange={(e) => setUserName(e.target.value)}
-          placeholder="Enter your name"
-        />
-        <button onClick={joinGame}>Join Game</button>
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          if (userName.trim().length > 0) {
+            joinGame();
+          }
+        }}>
+          <input
+            type="text"
+            value={userName}
+            onChange={(e) => setUserName(e.target.value)}
+            placeholder="Enter your name"
+            minLength={2}
+            required
+          />
+          <button type="submit">Join Game</button>
+        </form>
       </div>
     );
   }
@@ -1128,7 +1158,7 @@ function App() {
               <button
                 key={size}
                 className={`brush-size-button ${selectedBrushSize === size ? 'selected' : ''}`}
-                onClick={() => setSelectedBrushSize(size)}
+                onClick={() => handleBrushSizeChange(size)}
               >
                 <div
                   className="brush-size-indicator"
