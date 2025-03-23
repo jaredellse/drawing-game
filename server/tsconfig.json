@@ -9,8 +9,10 @@
     "outDir": "dist",
     "rootDir": ".",
     "allowJs": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "sourceMap": false
   },
   "include": ["*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "dist"]
 } 
