@@ -308,7 +308,7 @@ function App() {
   // Initialize socket connection
   useEffect(() => {
     const SOCKET_URL = import.meta.env.PROD 
-      ? 'https://drawing-game-server.onrender.com'
+      ? 'wss://drawing-game-server.onrender.com'
       : 'http://localhost:3002';
 
     const newSocket = io(SOCKET_URL, {
@@ -317,7 +317,10 @@ function App() {
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-      forceNew: true
+      forceNew: true,
+      path: '/socket.io',
+      withCredentials: true,
+      secure: import.meta.env.PROD
     });
 
     setSocket(newSocket);
@@ -329,6 +332,21 @@ function App() {
 
     newSocket.on('connect_error', (error) => {
       console.error('Socket connection error:', error);
+      // Try to reconnect with polling if WebSocket fails
+      if (error.message.includes('websocket')) {
+        const fallbackSocket = io(SOCKET_URL, {
+          transports: ['polling', 'websocket'],
+          upgrade: true,
+          reconnection: true,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+          forceNew: true,
+          path: '/socket.io',
+          withCredentials: true,
+          secure: import.meta.env.PROD
+        });
+        setSocket(fallbackSocket);
+      }
     });
 
     newSocket.on('disconnect', (reason) => {
@@ -341,108 +359,13 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const serverUrl = import.meta.env.PROD 
-      ? 'https://drawing-game-server.onrender.com'
-      : 'http://localhost:3002';
+    if (!socket) return;
 
-    const newSocket = io(serverUrl, {
-      transports: ['websocket'],
-      withCredentials: true
-    });
-
-    setSocket(newSocket);
-
-    newSocket.on('connect', () => {
-      console.log('Connected to server');
-    });
-
-    // Handle new user joining with video
-    newSocket.on('userJoinedWithVideo', async (userId: string) => {
-      try {
-        if (!localStream) return;
-
-        const peerConnection = new RTCPeerConnection();
-        
-        // Add local stream tracks
-        localStream.getTracks().forEach(track => {
-          peerConnection.addTrack(track, localStream);
-        });
-
-        // Set up event handlers
-        peerConnection.ontrack = (event) => {
-          const [remoteStream] = event.streams;
-          setUserStreams(prev => ({
-            ...prev,
-            [userId]: remoteStream
-          }));
-        };
-
-        // Create and send offer
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-        
-        newSocket.emit('offer', {
-          to: userId,
-          offer: peerConnection.localDescription
-        });
-      } catch (err) {
-        console.error('Error creating WebRTC connection:', err);
-      }
-    });
-
-    // Handle WebRTC signaling
-    newSocket.on('offer', async (data: { from: string; offer: RTCSessionDescriptionInit }) => {
-      try {
-        const peerConnection = new RTCPeerConnection();
-        
-        // Add local stream tracks to the connection
-        if (localStream) {
-          localStream.getTracks().forEach(track => {
-            peerConnection.addTrack(track, localStream);
-          });
-        }
-
-        // Set up event handlers for the peer connection
-        peerConnection.ontrack = (event) => {
-          const [remoteStream] = event.streams;
-          setUserStreams(prev => ({
-            ...prev,
-            [data.from]: remoteStream
-          }));
-        };
-
-        // Set the remote description (offer)
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
-        
-        // Create and set local description (answer)
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
-        
-        // Send the answer back
-        newSocket.emit('answer', {
-          to: data.from,
-          answer: peerConnection.localDescription
-        });
-
-      } catch (err) {
-        console.error('Error handling offer:', err);
-      }
-    });
-
-    newSocket.on('answer', async (data: { from: string; answer: RTCSessionDescriptionInit }) => {
-      try {
-        const peerConnection = new RTCPeerConnection();
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-      } catch (err) {
-        console.error('Error handling answer:', err);
-      }
-    });
-
-    newSocket.on('currentUsers', (users) => {
+    socket.on('currentUsers', (users) => {
       setUsers(users);
     });
 
-    newSocket.on('userJoined', (user: User) => {
+    socket.on('userJoined', (user: User) => {
       setUsers(prev => {
         if (prev.some(u => u.id === user.id)) {
           return prev;
@@ -451,7 +374,7 @@ function App() {
       });
     });
 
-    newSocket.on('userLeft', (userId: string) => {
+    socket.on('userLeft', (userId: string) => {
       setUsers(prev => prev.filter(user => user.id !== userId));
       setUserStreams(prev => {
         const newStreams = { ...prev };
@@ -463,34 +386,12 @@ function App() {
       }
     });
 
-    newSocket.on('draw', (data: DrawingData) => {
-      setDrawingData(prev => ({
-        ...prev,
-        [data.userId]: [...(prev[data.userId] || []), data]
-      }));
-    });
-
-    newSocket.on('clearCanvas', (userId: string) => {
-      setDrawingData(prev => ({
-        ...prev,
-        [userId]: []
-      }));
-    });
-
-    newSocket.on('currentState', (state: DrawingDataMap) => {
-      setDrawingData(state);
-    });
-
     return () => {
-      newSocket.close();
-      socket?.off('draw');
-      socket?.off('clearCanvas');
-      socket?.off('currentState');
-      socket?.off('offer');
-      socket?.off('answer');
-      socket?.off('userJoinedWithVideo');
+      socket.off('currentUsers');
+      socket.off('userJoined');
+      socket.off('userLeft');
     };
-  }, [localStream]); // Add localStream as dependency
+  }, [socket, selectedUser]);
 
   // Initialize canvas and context
   useEffect(() => {
@@ -951,12 +852,7 @@ function App() {
         if (!localStream) return;
 
         // Create new RTCPeerConnection
-        const peerConnection = new RTCPeerConnection({
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
-          ]
-        });
+        const peerConnection = new RTCPeerConnection();
         
         peerConnections.set(userId, peerConnection);
 

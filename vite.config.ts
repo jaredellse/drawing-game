@@ -10,7 +10,9 @@ export default defineConfig({
       '/socket.io': {
         target: 'http://localhost:3002',
         ws: true,
-        changeOrigin: true
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/socket\.io/, '/socket.io')
       }
     }
   },
@@ -28,4 +30,7 @@ export default defineConfig({
     assetsDir: 'assets',
     emptyOutDir: true,
   },
+  define: {
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
+  }
 })
