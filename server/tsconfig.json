@@ -6,13 +6,20 @@
     "esModuleInterop": true,
     "strict": true,
     "skipLibCheck": true,
-    "outDir": "dist",
+    "outDir": "./dist",
     "rootDir": ".",
     "allowJs": true,
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
-    "sourceMap": false
+    "sourceMap": true,
+    "declaration": true,
+    "noImplicitAny": true
   },
-  "include": ["*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 } 
