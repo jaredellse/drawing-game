@@ -319,12 +319,9 @@ function App() {
       reconnectionDelay: 1000,
       forceNew: true,
       path: '/socket.io',
-      withCredentials: false,
+      withCredentials: true,
       autoConnect: true,
-      timeout: 20000,
-      extraHeaders: {
-        'Access-Control-Allow-Origin': '*'
-      }
+      timeout: 20000
     });
 
     setSocket(newSocket);

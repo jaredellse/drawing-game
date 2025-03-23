@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import cors from 'cors';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,18 +12,21 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const httpServer = createServer(app);
 
-// Configure CORS based on environment
-const isDevelopment = process.env.NODE_ENV !== 'production';
-const clientURL = isDevelopment 
-  ? ['http://localhost:5173', 'http://localhost:5175', 'http://localhost:5174']
-  : ['https://jaredellse.github.io'];
+// Enable CORS for all routes
+app.use(cors({
+  origin: ['https://jaredellse.github.io', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 
+// Configure Socket.IO
 const io = new Server(httpServer, {
   cors: {
-    origin: '*',  // Allow all origins in production
-    methods: ["GET", "POST", "OPTIONS"],
-    credentials: false,  // Disable credentials since we're using public access
-    allowedHeaders: ["Content-Type", "Authorization"]
+    origin: ['https://jaredellse.github.io', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
   },
   transports: ['polling', 'websocket'],
   allowEIO3: true,
@@ -30,21 +34,8 @@ const io = new Server(httpServer, {
   pingInterval: 25000
 });
 
-// Add CORS middleware for Express
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'false');
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-  } else {
-    next();
-  }
-});
-
 // Serve static files from the client build directory in production
-if (!isDevelopment) {
+if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../dist')));
 }
 
