@@ -312,12 +312,7 @@ function App() {
       : 'http://localhost:3002';
 
     const newSocket = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
-      upgrade: true,
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      forceNew: true,
+      transports: ['websocket'],
       path: '/socket.io',
       withCredentials: true,
       autoConnect: true
