@@ -604,9 +604,6 @@ function App() {
     if (!mainCanvasRef.current || !socketId) return;
     e.preventDefault();
     
-    // Only start drawing on left mouse button (button === 0)
-    if ('button' in e && e.button !== 0) return;
-    
     const canvas = mainCanvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -615,8 +612,18 @@ function App() {
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     
-    const x = (('touches' in e ? e.touches[0].clientX : e.clientX) - rect.left) * scaleX;
-    const y = (('touches' in e ? e.touches[0].clientY : e.clientY) - rect.top) * scaleY;
+    let x, y;
+    if ('touches' in e) {
+      // Touch event
+      const touch = e.touches[0];
+      x = (touch.clientX - rect.left) * scaleX;
+      y = (touch.clientY - rect.top) * scaleY;
+    } else {
+      // Mouse event - only start on left button
+      if (e.button !== 0) return;
+      x = (e.clientX - rect.left) * scaleX;
+      y = (e.clientY - rect.top) * scaleY;
+    }
 
     setIsDrawing(true);
     setLastPos({ x, y });
@@ -657,12 +664,6 @@ function App() {
     if (!isDrawing || !mainCanvasRef.current || !socketId) return;
     e.preventDefault();
     
-    // For mouse events, check if the left button is pressed
-    if ('buttons' in e && !(e.buttons & 1)) {
-      setIsDrawing(false);
-      return;
-    }
-    
     const canvas = mainCanvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -671,12 +672,27 @@ function App() {
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     
-    const x = (('touches' in e ? e.touches[0].clientX : e.clientX) - rect.left) * scaleX;
-    const y = (('touches' in e ? e.touches[0].clientY : e.clientY) - rect.top) * scaleY;
+    let x, y;
+    if ('touches' in e) {
+      // Touch event
+      const touch = e.touches[0];
+      x = (touch.clientX - rect.left) * scaleX;
+      y = (touch.clientY - rect.top) * scaleY;
+    } else {
+      // Mouse event - check if left button is still pressed
+      if (!(e.buttons & 1)) {
+        setIsDrawing(false);
+        return;
+      }
+      x = (e.clientX - rect.left) * scaleX;
+      y = (e.clientY - rect.top) * scaleY;
+    }
 
     // Ensure correct drawing settings
     ctx.strokeStyle = selectedColor;
     ctx.lineWidth = selectedBrushSize;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
     // Draw line
     ctx.beginPath();
@@ -1065,6 +1081,8 @@ function App() {
             onTouchStart={startDrawing}
             onTouchMove={draw}
             onTouchEnd={stopDrawing}
+            onTouchCancel={stopDrawing}
+            style={{ touchAction: 'none' }}
           />
         </div>
 
