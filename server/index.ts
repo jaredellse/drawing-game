@@ -13,33 +13,36 @@ const app = express();
 const httpServer = createServer(app);
 
 // Enable CORS for all routes
-app.use(cors());
+app.use(cors({
+  origin: true, // This will reflect the request origin
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Configure Socket.IO
 const io = new Server(httpServer, {
   cors: {
-    origin: ["https://jaredellse.github.io", "http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
-    methods: ["GET", "POST", "OPTIONS"],
+    origin: true, // This will reflect the request origin
+    methods: ['GET', 'POST', 'OPTIONS'],
     credentials: true,
-    allowedHeaders: ["Content-Type"]
+    allowedHeaders: ['Content-Type']
   },
-  path: "/socket.io/",
-  transports: ['websocket', 'polling'],
   allowEIO3: true,
   pingTimeout: 60000,
   pingInterval: 25000,
   connectTimeout: 45000,
-  upgradeTimeout: 30000,
-  maxHttpBufferSize: 1e8
+  transports: ['websocket', 'polling']
 });
 
-// Add headers middleware
-app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', 'https://jaredellse.github.io');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  next();
+// Error handling for the server
+httpServer.on('error', (error: any) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error('Port is already in use. Please free up the port and try again.');
+    process.exit(1);
+  } else {
+    console.error('Server error:', error);
+  }
 });
 
 // Serve static files from the client build directory in production
