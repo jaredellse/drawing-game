@@ -469,16 +469,15 @@ function App() {
     if (!ctx) return;
 
     const resizeCanvas = () => {
-      // Get the container's dimensions
       const rect = container.getBoundingClientRect();
       
-      // Set canvas size to match container size
+      // Set canvas dimensions based on container size
       canvas.width = rect.width;
       canvas.height = rect.height;
       
       // Set canvas style dimensions
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
       
       // Preserve context settings after resize
       ctx.strokeStyle = selectedColor;
@@ -499,12 +498,14 @@ function App() {
 
     // Add resize listener
     window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('orientationchange', resizeCanvas);
 
     // Cleanup
     return () => {
       window.removeEventListener('resize', resizeCanvas);
+      window.removeEventListener('orientationchange', resizeCanvas);
     };
-  }, [selectedColor, selectedBrushSize]); // Add dependencies
+  }, [selectedColor, selectedBrushSize]);
 
   // Handle color and brush size changes without affecting the canvas
   useEffect(() => {
@@ -703,18 +704,20 @@ function App() {
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
     
     let x, y;
     if ('touches' in e) {
       // Touch event
       const touch = e.touches[0];
-      x = touch.clientX - rect.left;
-      y = touch.clientY - rect.top;
+      x = (touch.clientX - rect.left) * scaleX;
+      y = (touch.clientY - rect.top) * scaleY;
     } else {
       // Mouse event - only start on left button
       if (e.button !== 0) return;
-      x = e.clientX - rect.left;
-      y = e.clientY - rect.top;
+      x = (e.clientX - rect.left) * scaleX;
+      y = (e.clientY - rect.top) * scaleY;
     }
 
     setIsDrawing(true);
@@ -761,21 +764,23 @@ function App() {
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
     
     let x, y;
     if ('touches' in e) {
       // Touch event
       const touch = e.touches[0];
-      x = touch.clientX - rect.left;
-      y = touch.clientY - rect.top;
+      x = (touch.clientX - rect.left) * scaleX;
+      y = (touch.clientY - rect.top) * scaleY;
     } else {
       // Mouse event - check if left button is still pressed
       if (!(e.buttons & 1)) {
         setIsDrawing(false);
         return;
       }
-      x = e.clientX - rect.left;
-      y = e.clientY - rect.top;
+      x = (e.clientX - rect.left) * scaleX;
+      y = (e.clientY - rect.top) * scaleY;
     }
 
     // Ensure correct drawing settings

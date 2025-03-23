@@ -746,128 +746,80 @@ input[type="range"] {
 }
 
 @media (max-width: 900px) {
-  :root {
-    --content-padding: 12px;
-  }
-
-  .toolbar {
-    padding: 8px;
-    max-height: 50vh;
-  }
-
-  .tool-group {
-    min-width: 160px;
-    padding: 6px;
-  }
-
-  .brush-sizes {
-    min-width: 220px;
-    gap: 12px;
+  .app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
   }
 
   .canvas-container {
-    flex-direction: column;
-    height: auto;
-    min-height: 0;
     flex: 1;
-    padding-bottom: 60px;
+    min-height: 0;
+    padding: 8px;
+    padding-bottom: 120px; /* Space for video sidebar */
   }
 
   .canvas-wrapper {
+    width: 100%;
+    height: 100%;
     min-height: 0;
-    flex: 1;
+  }
+
+  canvas {
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+  }
+
+  .toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: white;
+    padding: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   }
 
   .video-sidebar {
     position: fixed;
     bottom: 0;
+    left: 0;
     right: 0;
-    width: 100%;
-    height: auto;
-    max-height: 30vh;
+    height: 110px;
+    background: white;
     z-index: 900;
-  }
-
-  .video-sidebar.collapsed {
-    transform: translateY(100%);
+    padding: 8px;
+    box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
   }
 
   .preview-container {
     flex-direction: row;
     overflow-x: auto;
     overflow-y: hidden;
-    padding: 8px;
+    gap: 8px;
+    height: 100%;
+    padding-bottom: 8px;
   }
 
   .preview-window {
-    width: 160px;
+    width: 120px;
+    height: 90px;
     flex-shrink: 0;
+    margin-right: 8px;
   }
 
-  .toolbar-toggle {
-    display: block;
-  }
-
-  .toolbar {
-    padding-right: 40px;
-  }
-
-  .canvas-container {
-    padding-top: calc(88px + 8px);
-  }
-
-  .canvas-container.toolbar-collapsed {
-    padding-top: 8px;
-  }
-
-  .canvas-container {
-    position: relative;
-  }
-
-  .canvas-container.viewing-other {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 1000;
-    background: white;
-    padding: 0;
-  }
-
-  .canvas-container.viewing-other .canvas-wrapper:first-child {
-    display: none;
-  }
-
-  .canvas-container.viewing-other .canvas-wrapper {
+  .preview-window video {
     width: 100%;
     height: 100%;
-    margin: 0;
+    object-fit: cover;
   }
 
-  .canvas-container.viewing-other .canvas-header {
-    padding: 8px;
-    background: white;
-    border-bottom: 1px solid #ddd;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .canvas-container.viewing-other .back-button {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text-secondary);
-  }
-
-  .canvas-container.viewing-other .back-button svg {
-    width: 20px;
-    height: 20px;
+  .video-toggle {
+    display: none;
   }
 }
 
@@ -1134,22 +1086,28 @@ input[type="range"] {
 /* iPad specific fixes */
 @media only screen and (min-device-width: 768px) and (max-device-width: 1024px) {
   .app-container {
-    height: 100vh;
     position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
   }
 
   .canvas-container {
-    flex: 1;
-    min-height: 0;
+    padding-top: 60px;
   }
 
-  .canvas-wrapper {
-    flex: 1;
-    min-height: 0;
+  .toolbar {
+    height: 52px;
   }
 
-  canvas {
-    height: 100%;
-    width: 100%;
+  .video-sidebar {
+    height: 120px;
+  }
+
+  .preview-window {
+    width: 140px;
+    height: 105px;
   }
 }
