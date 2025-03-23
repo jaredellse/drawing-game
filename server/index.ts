@@ -37,11 +37,10 @@ interface User {
 }
 
 interface DrawingData {
-  type: 'line' | 'shape' | 'animal';
+  type: 'line' | 'preset';
   points: { x: number; y: number }[];
   color: string;
   size: number;
-  shape?: string;
   startX: number;
   startY: number;
   userId: string;
@@ -78,6 +77,26 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('userJoined', users.get(userId));
   });
 
+  // Handle WebRTC signaling
+  socket.on('requestConnections', () => {
+    // Notify all other users to initiate connections with the new user
+    socket.broadcast.emit('userJoinedWithVideo', socket.id);
+  });
+
+  socket.on('offer', (data: { to: string; offer: RTCSessionDescriptionInit }) => {
+    io.to(data.to).emit('offer', {
+      from: socket.id,
+      offer: data.offer
+    });
+  });
+
+  socket.on('answer', (data: { to: string; answer: RTCSessionDescriptionInit }) => {
+    io.to(data.to).emit('answer', {
+      from: socket.id,
+      answer: data.answer
+    });
+  });
+
   socket.on('draw', (drawingData: DrawingData) => {
     const userId = drawingData.userId;
     if (!canvasState[userId]) {
@@ -109,7 +128,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 3002;
-httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+const port = process.env.PORT || 3002;
+httpServer.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 }); 
