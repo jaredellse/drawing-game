@@ -337,6 +337,7 @@ body {
   min-height: 0;
   position: relative;
   z-index: 0;
+  overflow: hidden;
 }
 
 .canvas-container.toolbar-collapsed {
@@ -354,7 +355,7 @@ body {
   transition: all 0.3s ease;
   height: 100%;
   min-height: 0;
-  touch-action: none;
+  touch-action: none !important;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
@@ -374,6 +375,8 @@ canvas {
   cursor: crosshair;
   position: relative;
   z-index: 1;
+  margin: 0;
+  padding: 0;
 }
 
 .canvas-label {
@@ -755,30 +758,38 @@ input[type="range"] {
 
 @media (max-width: 900px) {
   .app-container {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    width: 100vw;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     overflow: hidden;
+    touch-action: none !important;
   }
 
   .canvas-container {
     flex: 1;
     min-height: 0;
     padding: 8px;
-    padding-bottom: 120px; /* Space for video sidebar */
+    padding-bottom: 120px;
+    touch-action: none !important;
+    overflow: hidden;
   }
 
   .canvas-wrapper {
     width: 100%;
     height: 100%;
     min-height: 0;
+    touch-action: none !important;
+    overflow: hidden;
   }
 
   canvas {
     width: 100%;
     height: 100%;
-    touch-action: none;
+    touch-action: none !important;
+    margin: 0;
+    padding: 0;
   }
 
   .toolbar {
@@ -1101,32 +1112,34 @@ input[type="range"] {
     bottom: 0;
     overflow: hidden;
     padding: 0;
-    touch-action: none;
+    touch-action: none !important;
   }
 
   .canvas-container {
     padding-top: 60px;
     padding-bottom: 120px;
     height: calc(100vh - 180px);
-    touch-action: none;
+    touch-action: none !important;
     -webkit-overflow-scrolling: touch;
     position: relative;
     z-index: 0;
+    overflow: hidden;
   }
 
   .canvas-wrapper {
     width: 100%;
     height: 100%;
     min-height: 0;
-    touch-action: none;
+    touch-action: none !important;
     -webkit-overflow-scrolling: touch;
     position: relative;
     z-index: 1;
+    overflow: hidden;
   }
 
   canvas {
     touch-action: none !important;
-    -ms-touch-action: none;
+    -ms-touch-action: none !important;
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
@@ -1135,11 +1148,26 @@ input[type="range"] {
     cursor: crosshair;
     position: relative;
     z-index: 2;
+    margin: 0;
+    padding: 0;
   }
 }
 
 /* Additional touch device optimizations */
 @media (hover: none) and (pointer: coarse) {
+  .canvas-wrapper {
+    touch-action: none !important;
+    -ms-touch-action: none !important;
+    overflow: hidden;
+  }
+
+  canvas {
+    touch-action: none !important;
+    -ms-touch-action: none !important;
+    margin: 0;
+    padding: 0;
+  }
+
   .tool-button,
   .brush-size-button,
   .color-button {
@@ -1150,15 +1178,5 @@ input[type="range"] {
 
   .preview-window {
     min-width: 120px;
-  }
-
-  .canvas-wrapper {
-    touch-action: none !important;
-    -ms-touch-action: none !important;
-  }
-
-  canvas {
-    touch-action: none !important;
-    -ms-touch-action: none !important;
   }
 }

@@ -499,6 +499,28 @@ function App() {
     };
   }, [selectedColor, selectedBrushSize]);
 
+  const getCanvasCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = mainCanvasRef.current;
+    if (!canvas) return null;
+
+    const rect = canvas.getBoundingClientRect();
+    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+
+    if ('touches' in e) {
+      const touch = e.touches[0];
+      return {
+        x: touch.pageX - (rect.left + scrollLeft),
+        y: touch.pageY - (rect.top + scrollTop)
+      };
+    } else {
+      return {
+        x: e.pageX - (rect.left + scrollLeft),
+        y: e.pageY - (rect.top + scrollTop)
+      };
+    }
+  };
+
   // Handle drawing start
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const socketId = socket?.id;
@@ -509,17 +531,10 @@ function App() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const rect = canvas.getBoundingClientRect();
-    
-    let x, y;
-    if ('touches' in e) {
-      const touch = e.touches[0];
-      x = touch.clientX - rect.left;
-      y = touch.clientY - rect.top;
-    } else {
-      x = e.clientX - rect.left;
-      y = e.clientY - rect.top;
-    }
+    const coords = getCanvasCoordinates(e);
+    if (!coords) return;
+
+    const { x, y } = coords;
 
     setIsDrawing(true);
     setLastPos({ x, y });
@@ -565,20 +580,15 @@ function App() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const rect = canvas.getBoundingClientRect();
-    
-    let x, y;
-    if ('touches' in e) {
-      const touch = e.touches[0];
-      x = touch.clientX - rect.left;
-      y = touch.clientY - rect.top;
-    } else {
-      if (!(e.buttons & 1)) {
-        setIsDrawing(false);
-        return;
-      }
-      x = e.clientX - rect.left;
-      y = e.clientY - rect.top;
+    const coords = getCanvasCoordinates(e);
+    if (!coords) return;
+
+    const { x, y } = coords;
+
+    // Check if left mouse button is still pressed for mouse events
+    if (!('touches' in e) && !(e.buttons & 1)) {
+      setIsDrawing(false);
+      return;
     }
 
     // Set drawing styles
