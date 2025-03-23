@@ -462,36 +462,30 @@ function App() {
     const canvas = mainCanvasRef.current;
     if (!canvas) return;
 
-    const container = canvas.parentElement;
-    if (!container) return;
-
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     const resizeCanvas = () => {
-      const rect = container.getBoundingClientRect();
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
       
       // Set canvas dimensions to match container size
-      canvas.width = rect.width;
-      canvas.height = rect.height;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
       
-      // Set canvas style dimensions to 100%
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
+      // Scale the context to account for the device pixel ratio
+      ctx.scale(dpr, dpr);
       
-      // Preserve context settings after resize
+      // Set canvas style dimensions
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+      
+      // Set drawing styles
       ctx.strokeStyle = selectedColor;
       ctx.lineWidth = selectedBrushSize;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
     };
-
-    // Set initial context
-    ctx.strokeStyle = selectedColor;
-    ctx.lineWidth = selectedBrushSize;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    setContext(ctx);
 
     // Initial resize
     resizeCanvas();
@@ -499,13 +493,17 @@ function App() {
     // Add resize and orientation change listeners
     window.addEventListener('resize', resizeCanvas);
     window.addEventListener('orientationchange', () => {
-      setTimeout(resizeCanvas, 100); // Add delay for orientation change
+      setTimeout(resizeCanvas, 100);
     });
 
-    // Cleanup
+    // Set context
+    setContext(ctx);
+
     return () => {
       window.removeEventListener('resize', resizeCanvas);
-      window.removeEventListener('orientationchange', resizeCanvas);
+      window.removeEventListener('orientationchange', () => {
+        setTimeout(resizeCanvas, 100);
+      });
     };
   }, [selectedColor, selectedBrushSize]);
 
@@ -513,31 +511,33 @@ function App() {
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const socketId = socket?.id;
     if (!mainCanvasRef.current || !socketId) return;
-    e.preventDefault(); // Prevent scrolling on touch
+    e.preventDefault();
     
     const canvas = mainCanvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    const dpr = window.devicePixelRatio || 1;
     
     let x, y;
     if ('touches' in e) {
-      // Touch event
       const touch = e.touches[0];
-      x = (touch.clientX - rect.left) * scaleX;
-      y = (touch.clientY - rect.top) * scaleY;
+      x = (touch.clientX - rect.left);
+      y = (touch.clientY - rect.top);
     } else {
-      // Mouse event
-      if (e.button !== 0) return;
-      x = (e.clientX - rect.left) * scaleX;
-      y = (e.clientY - rect.top) * scaleY;
+      x = (e.clientX - rect.left);
+      y = (e.clientY - rect.top);
     }
 
     setIsDrawing(true);
     setLastPos({ x, y });
+
+    // Set drawing styles
+    ctx.strokeStyle = selectedColor;
+    ctx.lineWidth = selectedBrushSize;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
     // Start new path
     ctx.beginPath();
@@ -568,31 +568,34 @@ function App() {
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const socketId = socket?.id;
     if (!isDrawing || !mainCanvasRef.current || !socketId) return;
-    e.preventDefault(); // Prevent scrolling on touch
+    e.preventDefault();
     
     const canvas = mainCanvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    const dpr = window.devicePixelRatio || 1;
     
     let x, y;
     if ('touches' in e) {
-      // Touch event
       const touch = e.touches[0];
-      x = (touch.clientX - rect.left) * scaleX;
-      y = (touch.clientY - rect.top) * scaleY;
+      x = (touch.clientX - rect.left);
+      y = (touch.clientY - rect.top);
     } else {
-      // Mouse event
       if (!(e.buttons & 1)) {
         setIsDrawing(false);
         return;
       }
-      x = (e.clientX - rect.left) * scaleX;
-      y = (e.clientY - rect.top) * scaleY;
+      x = (e.clientX - rect.left);
+      y = (e.clientY - rect.top);
     }
+
+    // Set drawing styles
+    ctx.strokeStyle = selectedColor;
+    ctx.lineWidth = selectedBrushSize;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
     // Draw line
     ctx.beginPath();
