@@ -8,13 +8,11 @@ export default defineConfig({
   server: {
     proxy: {
       '/socket.io': {
-        target: process.env.NODE_ENV === 'production' 
-          ? 'https://drawing-game-server.onrender.com' 
-          : 'http://localhost:3002',
+        target: 'http://localhost:3002',
         ws: true,
         changeOrigin: true
-      },
-    },
+      }
+    }
   },
   build: {
     outDir: 'dist',
@@ -22,7 +20,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom'],
+          'react': ['react', 'react-dom'],
         },
       },
     },

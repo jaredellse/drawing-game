@@ -305,6 +305,41 @@ function App() {
   const [isVideoSidebarCollapsed, setIsVideoSidebarCollapsed] = useState(false);
   const [isViewingOther, setIsViewingOther] = useState(false);
 
+  // Initialize socket connection
+  useEffect(() => {
+    const SOCKET_URL = import.meta.env.PROD 
+      ? 'https://drawing-game-server.onrender.com'
+      : 'http://localhost:3002';
+
+    const newSocket = io(SOCKET_URL, {
+      transports: ['websocket'],
+      upgrade: false,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      forceNew: true
+    });
+
+    setSocket(newSocket);
+
+    // Socket event handlers
+    newSocket.on('connect', () => {
+      console.log('Connected to server');
+    });
+
+    newSocket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+    });
+
+    newSocket.on('disconnect', (reason) => {
+      console.log('Disconnected from server:', reason);
+    });
+
+    return () => {
+      newSocket.close();
+    };
+  }, []);
+
   useEffect(() => {
     const serverUrl = import.meta.env.PROD 
       ? 'https://drawing-game-server.onrender.com'
