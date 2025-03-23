@@ -335,6 +335,8 @@ body {
   transition: padding-top 0.3s ease;
   flex: 1;
   min-height: 0;
+  position: relative;
+  z-index: 0;
 }
 
 .canvas-container.toolbar-collapsed {
@@ -357,6 +359,7 @@ body {
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  background: white;
 }
 
 canvas {
@@ -369,6 +372,8 @@ canvas {
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   cursor: crosshair;
+  position: relative;
+  z-index: 1;
 }
 
 .canvas-label {
@@ -1105,6 +1110,8 @@ input[type="range"] {
     height: calc(100vh - 180px);
     touch-action: none;
     -webkit-overflow-scrolling: touch;
+    position: relative;
+    z-index: 0;
   }
 
   .canvas-wrapper {
@@ -1113,6 +1120,8 @@ input[type="range"] {
     min-height: 0;
     touch-action: none;
     -webkit-overflow-scrolling: touch;
+    position: relative;
+    z-index: 1;
   }
 
   canvas {
@@ -1124,6 +1133,8 @@ input[type="range"] {
     user-select: none;
     -webkit-touch-callout: none;
     cursor: crosshair;
+    position: relative;
+    z-index: 2;
   }
 }
 
@@ -1139,5 +1150,15 @@ input[type="range"] {
 
   .preview-window {
     min-width: 120px;
+  }
+
+  .canvas-wrapper {
+    touch-action: none !important;
+    -ms-touch-action: none !important;
+  }
+
+  canvas {
+    touch-action: none !important;
+    -ms-touch-action: none !important;
   }
 }

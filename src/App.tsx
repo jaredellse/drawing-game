@@ -467,18 +467,10 @@ function App() {
 
     const resizeCanvas = () => {
       const rect = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
       
-      // Set canvas dimensions to match container size
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      
-      // Scale the context to account for the device pixel ratio
-      ctx.scale(dpr, dpr);
-      
-      // Set canvas style dimensions
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
+      // Set canvas dimensions
+      canvas.width = rect.width;
+      canvas.height = rect.height;
       
       // Set drawing styles
       ctx.strokeStyle = selectedColor;
@@ -518,16 +510,15 @@ function App() {
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
     
     let x, y;
     if ('touches' in e) {
       const touch = e.touches[0];
-      x = (touch.clientX - rect.left);
-      y = (touch.clientY - rect.top);
+      x = touch.clientX - rect.left;
+      y = touch.clientY - rect.top;
     } else {
-      x = (e.clientX - rect.left);
-      y = (e.clientY - rect.top);
+      x = e.clientX - rect.left;
+      y = e.clientY - rect.top;
     }
 
     setIsDrawing(true);
@@ -575,20 +566,19 @@ function App() {
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
     
     let x, y;
     if ('touches' in e) {
       const touch = e.touches[0];
-      x = (touch.clientX - rect.left);
-      y = (touch.clientY - rect.top);
+      x = touch.clientX - rect.left;
+      y = touch.clientY - rect.top;
     } else {
       if (!(e.buttons & 1)) {
         setIsDrawing(false);
         return;
       }
-      x = (e.clientX - rect.left);
-      y = (e.clientY - rect.top);
+      x = e.clientX - rect.left;
+      y = e.clientY - rect.top;
     }
 
     // Set drawing styles
@@ -623,6 +613,7 @@ function App() {
     setLastPos({ x, y });
   };
 
+  // Handle drawing stop
   const stopDrawing = () => {
     setIsDrawing(false);
   };
