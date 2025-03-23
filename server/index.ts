@@ -13,25 +13,33 @@ const app = express();
 const httpServer = createServer(app);
 
 // Enable CORS for all routes
-app.use(cors({
-  origin: ['https://jaredellse.github.io', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
+app.use(cors());
 
 // Configure Socket.IO
 const io = new Server(httpServer, {
   cors: {
-    origin: ['https://jaredellse.github.io', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
+    origin: ["https://jaredellse.github.io", "http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
+    methods: ["GET", "POST", "OPTIONS"],
+    credentials: true,
+    allowedHeaders: ["Content-Type"]
   },
-  transports: ['polling', 'websocket'],
+  path: "/socket.io/",
+  transports: ['websocket', 'polling'],
   allowEIO3: true,
   pingTimeout: 60000,
-  pingInterval: 25000
+  pingInterval: 25000,
+  connectTimeout: 45000,
+  upgradeTimeout: 30000,
+  maxHttpBufferSize: 1e8
+});
+
+// Add headers middleware
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', 'https://jaredellse.github.io');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  next();
 });
 
 // Serve static files from the client build directory in production
