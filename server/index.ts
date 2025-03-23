@@ -14,15 +14,17 @@ const httpServer = createServer(app);
 // Configure CORS based on environment
 const isDevelopment = process.env.NODE_ENV !== 'production';
 const clientURL = isDevelopment 
-  ? 'http://localhost:5173'
-  : 'https://jaredellse.github.io';
+  ? ['http://localhost:5173', 'http://localhost:5175', 'http://localhost:5174']
+  : ['https://jaredellse.github.io'];
 
 const io = new Server(httpServer, {
   cors: {
     origin: clientURL,
     methods: ["GET", "POST"],
     credentials: true
-  }
+  },
+  transports: ['polling', 'websocket'],
+  allowEIO3: true
 });
 
 // Serve static files from the client build directory in production

@@ -319,8 +319,9 @@ function App() {
       reconnectionDelay: 1000,
       forceNew: true,
       path: '/socket.io',
-      withCredentials: false,
-      autoConnect: true
+      withCredentials: true,
+      autoConnect: true,
+      timeout: 20000
     });
 
     setSocket(newSocket);
@@ -328,20 +329,36 @@ function App() {
     // Socket event handlers
     newSocket.on('connect', () => {
       console.log('Connected to server');
+      // Re-join the game if we were previously joined
+      if (userName) {
+        newSocket.emit('join', {
+          name: userName,
+          color: '#' + Math.floor(Math.random()*16777215).toString(16)
+        });
+        setIsJoined(true);
+      }
     });
 
     newSocket.on('connect_error', (error) => {
       console.error('Socket connection error:', error);
+      // Try to reconnect with polling if WebSocket fails
+      if (error.message.includes('websocket')) {
+        newSocket.io.opts.transports = ['polling', 'websocket'];
+      }
     });
 
     newSocket.on('disconnect', (reason) => {
       console.log('Disconnected from server:', reason);
+      if (reason === 'io server disconnect') {
+        // Reconnect if server initiated disconnect
+        newSocket.connect();
+      }
     });
 
     return () => {
       newSocket.close();
     };
-  }, []);
+  }, [userName]); // Add userName as dependency to handle reconnection
 
   useEffect(() => {
     if (!socket) return;
@@ -975,19 +992,17 @@ function App() {
     }
   };
 
-  // Add socket event listeners for drawing
+  // Handle drawing events
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('draw', (data: DrawingData) => {
-      // Only handle drawings from other users
+    const handleDraw = (data: DrawingData) => {
       if (data.userId !== socket.id) {
         setDrawingData(prev => ({
           ...prev,
           [data.userId]: [...(prev[data.userId] || []), data]
         }));
 
-        // Draw on other canvas if it's the selected user
         if (selectedUser?.id === data.userId && otherCanvasRef.current) {
           const ctx = otherCanvasRef.current.getContext('2d');
           if (!ctx) return;
@@ -1005,11 +1020,10 @@ function App() {
           ctx.stroke();
         }
       }
-    });
+    };
 
-    socket.on('clearCanvas', (userId: string) => {
+    const handleClearCanvas = (userId: string) => {
       if (userId !== socket.id) {
-        // Only clear other canvas if it belongs to the user who cleared
         if (selectedUser?.id === userId && otherCanvasRef.current) {
           const ctx = otherCanvasRef.current.getContext('2d');
           if (ctx) {
@@ -1017,17 +1031,19 @@ function App() {
           }
         }
         
-        // Update drawing data
         setDrawingData(prev => ({
           ...prev,
           [userId]: []
         }));
       }
-    });
+    };
+
+    socket.on('draw', handleDraw);
+    socket.on('clearCanvas', handleClearCanvas);
 
     return () => {
-      socket.off('draw');
-      socket.off('clearCanvas');
+      socket.off('draw', handleDraw);
+      socket.off('clearCanvas', handleClearCanvas);
     };
   }, [socket, selectedUser]);
 
