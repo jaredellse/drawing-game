@@ -69,6 +69,11 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 .toolbar {
@@ -328,6 +333,8 @@ body {
   padding-top: calc(44px + 16px);
   box-sizing: border-box;
   transition: padding-top 0.3s ease;
+  flex: 1;
+  min-height: 0;
 }
 
 .canvas-container.toolbar-collapsed {
@@ -344,6 +351,7 @@ body {
   flex-direction: column;
   transition: all 0.3s ease;
   height: 100%;
+  min-height: 0;
 }
 
 canvas {
@@ -357,6 +365,7 @@ canvas {
   -ms-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  display: block;
 }
 
 .canvas-label {
@@ -759,45 +768,40 @@ input[type="range"] {
   .canvas-container {
     flex-direction: column;
     height: auto;
-    min-height: calc(100vh - 80px);
+    min-height: 0;
+    flex: 1;
+    padding-bottom: 60px;
   }
 
-  .canvas-container.split-view .canvas-wrapper,
-  .canvas-container.side-by-side .canvas-wrapper,
-  .canvas-container.side-by-side .canvas-wrapper:first-child {
-    width: 100%;
-    min-height: 400px;
-  }
-
-  .video-sidebar {
-    width: 240px;
-  }
-  
-  .video-toggle {
-    right: 240px;
-  }
-  
-  .video-toggle.collapsed {
-    right: 0;
-  }
-
-  .video-container,
-  .preview-container {
-    width: min(240px, 40vw);
-    right: 16px;
-    bottom: 16px;
-  }
-
-  .side-by-side {
-    flex-direction: column;
-  }
-
-  .side-by-side .canvas-wrapper:first-child {
+  .canvas-wrapper {
+    min-height: 0;
     flex: 1;
   }
 
-  .side-by-side .canvas-wrapper {
-    min-height: 300px;
+  .video-sidebar {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    height: auto;
+    max-height: 30vh;
+    z-index: 900;
+  }
+
+  .video-sidebar.collapsed {
+    transform: translateY(100%);
+  }
+
+  .preview-container {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px;
+  }
+
+  .preview-window {
+    width: 160px;
+    flex-shrink: 0;
   }
 
   .toolbar-toggle {
@@ -1124,5 +1128,28 @@ input[type="range"] {
   .video-container {
     right: 44px; /* Align with preview container accounting for its scrollbar */
     bottom: 24px;
+  }
+}
+
+/* iPad specific fixes */
+@media only screen and (min-device-width: 768px) and (max-device-width: 1024px) {
+  .app-container {
+    height: 100vh;
+    position: fixed;
+  }
+
+  .canvas-container {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .canvas-wrapper {
+    flex: 1;
+    min-height: 0;
+  }
+
+  canvas {
+    height: 100%;
+    width: 100%;
   }
 }
