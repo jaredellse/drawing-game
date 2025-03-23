@@ -1092,22 +1092,95 @@ input[type="range"] {
     right: 0;
     bottom: 0;
     overflow: hidden;
+    padding: 0;
   }
 
   .canvas-container {
     padding-top: 60px;
+    padding-bottom: 120px;
+    height: calc(100vh - 180px);
+  }
+
+  .canvas-wrapper {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
   }
 
   .toolbar {
-    height: 52px;
+    height: auto;
+    max-height: 60px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    padding: 8px;
+    display: flex;
+    flex-wrap: nowrap;
   }
 
   .video-sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
     height: 120px;
+    width: 100%;
+    transform: none;
+    background: white;
+    border-top: 1px solid #ddd;
+    box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+  }
+
+  .video-sidebar.collapsed {
+    transform: translateY(100%);
+  }
+
+  .preview-container {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px;
+    gap: 8px;
+    height: 104px;
   }
 
   .preview-window {
     width: 140px;
-    height: 105px;
+    height: 104px;
+    flex-shrink: 0;
+    margin-right: 8px;
+  }
+
+  .preview-window video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .video-toggle {
+    display: none;
+  }
+
+  canvas {
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Additional touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .tool-button,
+  .brush-size-button,
+  .color-button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 12px;
+  }
+
+  .preview-window {
+    min-width: 120px;
   }
 }

@@ -471,11 +471,11 @@ function App() {
     const resizeCanvas = () => {
       const rect = container.getBoundingClientRect();
       
-      // Set canvas dimensions based on container size
+      // Set canvas dimensions to match container size
       canvas.width = rect.width;
       canvas.height = rect.height;
       
-      // Set canvas style dimensions
+      // Set canvas style dimensions to 100%
       canvas.style.width = '100%';
       canvas.style.height = '100%';
       
@@ -496,9 +496,11 @@ function App() {
     // Initial resize
     resizeCanvas();
 
-    // Add resize listener
+    // Add resize and orientation change listeners
     window.addEventListener('resize', resizeCanvas);
-    window.addEventListener('orientationchange', resizeCanvas);
+    window.addEventListener('orientationchange', () => {
+      setTimeout(resizeCanvas, 100); // Add delay for orientation change
+    });
 
     // Cleanup
     return () => {
@@ -507,197 +509,11 @@ function App() {
     };
   }, [selectedColor, selectedBrushSize]);
 
-  // Handle color and brush size changes without affecting the canvas
-  useEffect(() => {
-    if (!context) return;
-    context.strokeStyle = selectedColor;
-    context.lineWidth = selectedBrushSize;
-  }, [context, selectedColor, selectedBrushSize]);
-
-  // Initialize other canvas when selected user changes
-  useEffect(() => {
-    const canvas = otherCanvasRef.current;
-    if (!canvas || !selectedUser) return;
-
-    const container = canvas.parentElement;
-    if (!container) return;
-
-    const resizeCanvas = () => {
-      const rect = container.getBoundingClientRect();
-      canvas.width = rect.width;
-      canvas.height = rect.height;
-      
-      // Redraw all the selected user's drawings
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      // Clear the canvas first
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Redraw all the selected user's drawings
-      const userDrawings = drawingData[selectedUser.id] || [];
-      userDrawings.forEach(drawing => {
-        ctx.strokeStyle = drawing.color;
-        ctx.lineWidth = drawing.size;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-
-        ctx.beginPath();
-        ctx.moveTo(drawing.startX, drawing.startY);
-        drawing.points.forEach(point => {
-          ctx.lineTo(point.x, point.y);
-        });
-        ctx.stroke();
-      });
-    };
-
-    // Initial resize
-    resizeCanvas();
-
-    // Add resize listener
-    window.addEventListener('resize', resizeCanvas);
-
-    // Cleanup
-    return () => {
-      window.removeEventListener('resize', resizeCanvas);
-    };
-  }, [selectedUser, drawingData]);
-
-  const joinGame = async () => {
-    if (socket && userName) {
-      try {
-        // Initialize camera
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true
-        });
-        
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-        }
-        setLocalStream(stream);
-        setIsCameraOn(true);
-        
-        // Join the game
-        socket.emit('join', {
-          name: userName,
-          color: '#' + Math.floor(Math.random()*16777215).toString(16)
-        });
-        setIsJoined(true);
-
-        // After joining, initiate connections with existing users
-        socket.emit('requestConnections');
-      } catch (err) {
-        console.error('Error accessing camera:', err);
-        if (window.confirm('Could not access camera. Would you like to continue without video?')) {
-          socket.emit('join', {
-            name: userName,
-            color: '#' + Math.floor(Math.random()*16777215).toString(16)
-          });
-          setIsJoined(true);
-          setIsCameraOn(false);
-        }
-      }
-    }
-  };
-
-  // Handle received drawings
-  useEffect(() => {
-    if (!socket) return;
-
-    socket.on('draw', (data: DrawingData) => {
-      // Only handle drawings from other users
-      if (data.userId !== socket.id) {
-        // Update drawing data state
-        setDrawingData(prev => ({
-          ...prev,
-          [data.userId]: [...(prev[data.userId] || []), data]
-        }));
-
-        // Draw on other canvas if it's the selected user
-        if (selectedUser?.id === data.userId && otherCanvasRef.current) {
-          const ctx = otherCanvasRef.current.getContext('2d');
-          if (!ctx) return;
-
-          ctx.strokeStyle = data.color;
-          ctx.lineWidth = data.size;
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-
-          ctx.beginPath();
-          ctx.moveTo(data.startX, data.startY);
-          data.points.forEach(point => {
-            ctx.lineTo(point.x, point.y);
-          });
-          ctx.stroke();
-        }
-      }
-    });
-
-    socket.on('clearCanvas', (userId: string) => {
-      if (userId !== socket.id) {
-        // Only clear other canvas if it belongs to the user who cleared
-        if (selectedUser?.id === userId && otherCanvasRef.current) {
-          const ctx = otherCanvasRef.current.getContext('2d');
-          if (ctx) {
-            ctx.clearRect(0, 0, otherCanvasRef.current.width, otherCanvasRef.current.height);
-          }
-        }
-        
-        // Update drawing data
-        setDrawingData(prev => ({
-          ...prev,
-          [userId]: []
-        }));
-      }
-    });
-
-    return () => {
-      socket.off('draw');
-      socket.off('clearCanvas');
-    };
-  }, [socket, selectedUser]);
-
-  // Update canvas size when window resizes
-  useEffect(() => {
-    const updateCanvasSize = () => {
-      const mainCanvas = mainCanvasRef.current;
-      const otherCanvas = otherCanvasRef.current;
-      if (!mainCanvas || !otherCanvas) return;
-
-      const containerWidth = window.innerWidth;
-      const containerHeight = window.innerHeight - 80; // Account for toolbar
-
-      if (viewMode.type === 'split') {
-        // In split view, each canvas takes half the width
-        const canvasWidth = containerWidth / 2;
-        mainCanvas.width = canvasWidth;
-        mainCanvas.height = containerHeight;
-        otherCanvas.width = canvasWidth;
-        otherCanvas.height = containerHeight;
-      } else {
-        // In single view, main canvas takes full width
-        mainCanvas.width = containerWidth;
-        mainCanvas.height = containerHeight;
-        otherCanvas.width = containerWidth;
-        otherCanvas.height = containerHeight;
-      }
-
-      // Redraw all content
-      redrawCanvas();
-    };
-
-    window.addEventListener('resize', updateCanvasSize);
-    updateCanvasSize();
-
-    return () => window.removeEventListener('resize', updateCanvasSize);
-  }, [viewMode, drawingData, selectedUser]);
-
-  // Handle local drawing
+  // Handle drawing start
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const socketId = socket?.id;
     if (!mainCanvasRef.current || !socketId) return;
-    e.preventDefault();
+    e.preventDefault(); // Prevent scrolling on touch
     
     const canvas = mainCanvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -714,7 +530,7 @@ function App() {
       x = (touch.clientX - rect.left) * scaleX;
       y = (touch.clientY - rect.top) * scaleY;
     } else {
-      // Mouse event - only start on left button
+      // Mouse event
       if (e.button !== 0) return;
       x = (e.clientX - rect.left) * scaleX;
       y = (e.clientY - rect.top) * scaleY;
@@ -723,19 +539,13 @@ function App() {
     setIsDrawing(true);
     setLastPos({ x, y });
 
-    // Ensure correct drawing settings
-    ctx.strokeStyle = selectedColor;
-    ctx.lineWidth = selectedBrushSize;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
     // Start new path
     ctx.beginPath();
     ctx.moveTo(x, y);
     ctx.lineTo(x, y);
     ctx.stroke();
 
-    // Update local drawing data and emit
+    // Update drawing data
     const newDrawing: DrawingData = {
       type: 'line',
       points: [{ x, y }],
@@ -754,10 +564,11 @@ function App() {
     socket.emit('draw', newDrawing);
   };
 
+  // Handle drawing
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const socketId = socket?.id;
     if (!isDrawing || !mainCanvasRef.current || !socketId) return;
-    e.preventDefault();
+    e.preventDefault(); // Prevent scrolling on touch
     
     const canvas = mainCanvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -774,7 +585,7 @@ function App() {
       x = (touch.clientX - rect.left) * scaleX;
       y = (touch.clientY - rect.top) * scaleY;
     } else {
-      // Mouse event - check if left button is still pressed
+      // Mouse event
       if (!(e.buttons & 1)) {
         setIsDrawing(false);
         return;
@@ -783,19 +594,13 @@ function App() {
       y = (e.clientY - rect.top) * scaleY;
     }
 
-    // Ensure correct drawing settings
-    ctx.strokeStyle = selectedColor;
-    ctx.lineWidth = selectedBrushSize;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
     // Draw line
     ctx.beginPath();
     ctx.moveTo(lastPos.x, lastPos.y);
     ctx.lineTo(x, y);
     ctx.stroke();
 
-    // Update local drawing data and emit
+    // Update drawing data
     const newDrawing: DrawingData = {
       type: 'line',
       points: [{ x, y }],
@@ -1044,6 +849,194 @@ function App() {
       });
     });
   };
+
+  const joinGame = async () => {
+    if (socket && userName) {
+      try {
+        // Initialize camera with specific constraints for better compatibility
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: 'user'
+          },
+          audio: true
+        });
+        
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+        }
+        setLocalStream(stream);
+        setIsCameraOn(true);
+        
+        // Join the game
+        socket.emit('join', {
+          name: userName,
+          color: '#' + Math.floor(Math.random()*16777215).toString(16)
+        });
+        setIsJoined(true);
+
+        // After joining, initiate connections with existing users
+        socket.emit('requestConnections');
+      } catch (err) {
+        console.error('Error accessing camera:', err);
+        if (window.confirm('Could not access camera. Would you like to continue without video?')) {
+          socket.emit('join', {
+            name: userName,
+            color: '#' + Math.floor(Math.random()*16777215).toString(16)
+          });
+          setIsJoined(true);
+          setIsCameraOn(false);
+        }
+      }
+    }
+  };
+
+  // Handle WebRTC connections
+  useEffect(() => {
+    if (!socket) return;
+
+    const peerConnections = new Map<string, RTCPeerConnection>();
+
+    socket.on('userJoinedWithVideo', async (userId: string) => {
+      try {
+        if (!localStream) return;
+
+        // Create new RTCPeerConnection
+        const peerConnection = new RTCPeerConnection({
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+          ]
+        });
+        
+        peerConnections.set(userId, peerConnection);
+
+        // Add local stream tracks
+        localStream.getTracks().forEach(track => {
+          peerConnection.addTrack(track, localStream);
+        });
+
+        // Handle ICE candidates
+        peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit('ice-candidate', {
+              to: userId,
+              candidate: event.candidate
+            });
+          }
+        };
+
+        // Handle incoming stream
+        peerConnection.ontrack = (event) => {
+          const [remoteStream] = event.streams;
+          setUserStreams(prev => ({
+            ...prev,
+            [userId]: remoteStream
+          }));
+        };
+
+        // Create and send offer
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        
+        socket.emit('offer', {
+          to: userId,
+          offer: peerConnection.localDescription
+        });
+      } catch (err) {
+        console.error('Error creating WebRTC connection:', err);
+      }
+    });
+
+    socket.on('offer', async (data: { from: string; offer: RTCSessionDescriptionInit }) => {
+      try {
+        if (!localStream) return;
+
+        // Create new RTCPeerConnection
+        const peerConnection = new RTCPeerConnection({
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+          ]
+        });
+        
+        peerConnections.set(data.from, peerConnection);
+
+        // Add local stream tracks
+        localStream.getTracks().forEach(track => {
+          peerConnection.addTrack(track, localStream);
+        });
+
+        // Handle ICE candidates
+        peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit('ice-candidate', {
+              to: data.from,
+              candidate: event.candidate
+            });
+          }
+        };
+
+        // Handle incoming stream
+        peerConnection.ontrack = (event) => {
+          const [remoteStream] = event.streams;
+          setUserStreams(prev => ({
+            ...prev,
+            [data.from]: remoteStream
+          }));
+        };
+
+        // Set remote description (offer)
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+        
+        // Create and send answer
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        
+        socket.emit('answer', {
+          to: data.from,
+          answer: peerConnection.localDescription
+        });
+      } catch (err) {
+        console.error('Error handling offer:', err);
+      }
+    });
+
+    socket.on('answer', async (data: { from: string; answer: RTCSessionDescriptionInit }) => {
+      try {
+        const peerConnection = peerConnections.get(data.from);
+        if (peerConnection) {
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+        }
+      } catch (err) {
+        console.error('Error handling answer:', err);
+      }
+    });
+
+    socket.on('ice-candidate', async (data: { from: string; candidate: RTCIceCandidateInit }) => {
+      try {
+        const peerConnection = peerConnections.get(data.from);
+        if (peerConnection) {
+          await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+        }
+      } catch (err) {
+        console.error('Error handling ICE candidate:', err);
+      }
+    });
+
+    // Cleanup function
+    return () => {
+      peerConnections.forEach(connection => {
+        connection.close();
+      });
+      peerConnections.clear();
+      socket.off('userJoinedWithVideo');
+      socket.off('offer');
+      socket.off('answer');
+      socket.off('ice-candidate');
+    };
+  }, [socket, localStream]);
 
   if (!isJoined) {
   return (
