@@ -14,35 +14,24 @@ const httpServer = createServer(app);
 
 // Enable CORS for all routes
 app.use(cors({
-  origin: true, // This will reflect the request origin
-  credentials: true,
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: ["https://jaredellse.github.io", "http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
+  methods: ["GET", "POST", "OPTIONS"],
+  credentials: true
 }));
 
 // Configure Socket.IO
 const io = new Server(httpServer, {
   cors: {
-    origin: true, // This will reflect the request origin
-    methods: ['GET', 'POST', 'OPTIONS'],
-    credentials: true,
-    allowedHeaders: ['Content-Type']
+    origin: ["https://jaredellse.github.io", "http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
+    methods: ["GET", "POST", "OPTIONS"],
+    credentials: true
   },
-  allowEIO3: true,
-  pingTimeout: 60000,
-  pingInterval: 25000,
-  connectTimeout: 45000,
   transports: ['websocket', 'polling']
 });
 
-// Error handling for the server
-httpServer.on('error', (error: any) => {
-  if (error.code === 'EADDRINUSE') {
-    console.error('Port is already in use. Please free up the port and try again.');
-    process.exit(1);
-  } else {
-    console.error('Server error:', error);
-  }
+// Health check endpoint for Railway
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
 });
 
 // Serve static files from the client build directory in production

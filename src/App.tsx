@@ -308,26 +308,19 @@ function App() {
   // Initialize socket connection
   useEffect(() => {
     const SOCKET_URL = import.meta.env.PROD 
-      ? 'https://drawing-game-server.onrender.com'
+      ? 'https://drawing-game-production.up.railway.app'  // We'll update this after deployment
       : 'http://localhost:3002';
 
     const newSocket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
       upgrade: true,
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       forceNew: true,
       path: '/socket.io',
       withCredentials: true,
-      autoConnect: true,
-      timeout: 45000,
-      rejectUnauthorized: false,
-      extraHeaders: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-        'Access-Control-Allow-Credentials': 'true'
-      }
+      autoConnect: true
     });
 
     setSocket(newSocket);
@@ -347,15 +340,6 @@ function App() {
 
     newSocket.on('connect_error', (error) => {
       console.error('Socket connection error:', error);
-      // Try to reconnect with polling if WebSocket fails
-      if (error.message.includes('websocket')) {
-        console.log('Falling back to polling transport');
-        newSocket.io.opts.transports = ['polling'];
-        setTimeout(() => {
-          console.log('Attempting to reconnect...');
-          newSocket.connect();
-        }, 1000);
-      }
     });
 
     newSocket.on('disconnect', (reason) => {
