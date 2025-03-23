@@ -499,6 +499,15 @@ function App() {
     };
   }, [selectedColor, selectedBrushSize]);
 
+  // Update context when color or brush size changes
+  useEffect(() => {
+    if (!context) return;
+    context.strokeStyle = selectedColor;
+    context.lineWidth = selectedBrushSize;
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+  }, [context, selectedColor, selectedBrushSize]);
+
   const getCanvasCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = mainCanvasRef.current;
     if (!canvas) return null;
@@ -1042,6 +1051,14 @@ function App() {
     };
   }, [socket, localStream]);
 
+  // Update the color palette click handler
+  const handleColorClick = (color: string) => {
+    setSelectedColor(color);
+    if (context) {
+      context.strokeStyle = color;
+    }
+  };
+
   if (!isJoined) {
   return (
       <div className="join-screen">
@@ -1103,7 +1120,7 @@ function App() {
                   margin: '4px',
                   cursor: 'pointer'
                 }}
-                onClick={() => setSelectedColor(color)}
+                onClick={() => handleColorClick(color)}
                 title={color}
               />
             ))}
