@@ -11,10 +11,18 @@ export default defineConfig({
         target: 'http://localhost:3002',
         ws: true,
         changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/socket\.io/, '/socket.io')
+        secure: false
       }
+    },
+    cors: {
+      origin: '*',
+      methods: ['GET', 'POST']
     }
+  },
+  preview: {
+    port: 5173,
+    strictPort: true,
+    cors: true
   },
   build: {
     outDir: 'dist',

@@ -308,19 +308,19 @@ function App() {
   // Initialize socket connection
   useEffect(() => {
     const SOCKET_URL = import.meta.env.PROD 
-      ? 'wss://drawing-game-server.onrender.com'
+      ? 'https://drawing-game-server.onrender.com'
       : 'http://localhost:3002';
 
     const newSocket = io(SOCKET_URL, {
-      transports: ['websocket'],
-      upgrade: false,
+      transports: ['polling', 'websocket'],
+      upgrade: true,
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       forceNew: true,
       path: '/socket.io',
-      withCredentials: true,
-      secure: import.meta.env.PROD
+      withCredentials: false,
+      autoConnect: true
     });
 
     setSocket(newSocket);
@@ -332,21 +332,6 @@ function App() {
 
     newSocket.on('connect_error', (error) => {
       console.error('Socket connection error:', error);
-      // Try to reconnect with polling if WebSocket fails
-      if (error.message.includes('websocket')) {
-        const fallbackSocket = io(SOCKET_URL, {
-          transports: ['polling', 'websocket'],
-          upgrade: true,
-          reconnection: true,
-          reconnectionAttempts: 5,
-          reconnectionDelay: 1000,
-          forceNew: true,
-          path: '/socket.io',
-          withCredentials: true,
-          secure: import.meta.env.PROD
-        });
-        setSocket(fallbackSocket);
-      }
     });
 
     newSocket.on('disconnect', (reason) => {
@@ -989,6 +974,62 @@ function App() {
       context.strokeStyle = color;
     }
   };
+
+  // Add socket event listeners for drawing
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('draw', (data: DrawingData) => {
+      // Only handle drawings from other users
+      if (data.userId !== socket.id) {
+        setDrawingData(prev => ({
+          ...prev,
+          [data.userId]: [...(prev[data.userId] || []), data]
+        }));
+
+        // Draw on other canvas if it's the selected user
+        if (selectedUser?.id === data.userId && otherCanvasRef.current) {
+          const ctx = otherCanvasRef.current.getContext('2d');
+          if (!ctx) return;
+
+          ctx.strokeStyle = data.color;
+          ctx.lineWidth = data.size;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+
+          ctx.beginPath();
+          ctx.moveTo(data.startX, data.startY);
+          data.points.forEach(point => {
+            ctx.lineTo(point.x, point.y);
+          });
+          ctx.stroke();
+        }
+      }
+    });
+
+    socket.on('clearCanvas', (userId: string) => {
+      if (userId !== socket.id) {
+        // Only clear other canvas if it belongs to the user who cleared
+        if (selectedUser?.id === userId && otherCanvasRef.current) {
+          const ctx = otherCanvasRef.current.getContext('2d');
+          if (ctx) {
+            ctx.clearRect(0, 0, otherCanvasRef.current.width, otherCanvasRef.current.height);
+          }
+        }
+        
+        // Update drawing data
+        setDrawingData(prev => ({
+          ...prev,
+          [userId]: []
+        }));
+      }
+    });
+
+    return () => {
+      socket.off('draw');
+      socket.off('clearCanvas');
+    };
+  }, [socket, selectedUser]);
 
   if (!isJoined) {
   return (
