@@ -271,6 +271,11 @@ const PRESET_IMAGES: Record<PresetName, string> = {
   smiley: '/images/smiley-outline.png'
 };
 
+// Add this interface definition at the top with other interfaces
+interface CanvasState {
+  [userId: string]: DrawingData[];
+}
+
 function App() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [userName, setUserName] = useState('');
@@ -845,8 +850,16 @@ function App() {
       try {
         if (!localStream) return;
 
-        // Create new RTCPeerConnection
-        const peerConnection = new RTCPeerConnection();
+        // Create new RTCPeerConnection with STUN servers
+        const peerConnection = new RTCPeerConnection({
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' }
+          ]
+        });
         
         peerConnections.set(userId, peerConnection);
 
@@ -865,8 +878,19 @@ function App() {
           }
         };
 
+        // Handle connection state changes
+        peerConnection.onconnectionstatechange = () => {
+          console.log('Connection state:', peerConnection.connectionState);
+        };
+
+        // Handle ICE connection state changes
+        peerConnection.oniceconnectionstatechange = () => {
+          console.log('ICE connection state:', peerConnection.iceConnectionState);
+        };
+
         // Handle incoming stream
         peerConnection.ontrack = (event) => {
+          console.log('Received remote track');
           const [remoteStream] = event.streams;
           setUserStreams(prev => ({
             ...prev,
@@ -875,7 +899,10 @@ function App() {
         };
 
         // Create and send offer
-        const offer = await peerConnection.createOffer();
+        const offer = await peerConnection.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true
+        });
         await peerConnection.setLocalDescription(offer);
         
         socket.emit('offer', {
@@ -891,11 +918,14 @@ function App() {
       try {
         if (!localStream) return;
 
-        // Create new RTCPeerConnection
+        // Create new RTCPeerConnection with STUN servers
         const peerConnection = new RTCPeerConnection({
           iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' }
           ]
         });
         
@@ -916,8 +946,19 @@ function App() {
           }
         };
 
+        // Handle connection state changes
+        peerConnection.onconnectionstatechange = () => {
+          console.log('Connection state:', peerConnection.connectionState);
+        };
+
+        // Handle ICE connection state changes
+        peerConnection.oniceconnectionstatechange = () => {
+          console.log('ICE connection state:', peerConnection.iceConnectionState);
+        };
+
         // Handle incoming stream
         peerConnection.ontrack = (event) => {
+          console.log('Received remote track');
           const [remoteStream] = event.streams;
           setUserStreams(prev => ({
             ...prev,
@@ -988,47 +1029,60 @@ function App() {
   useEffect(() => {
     if (!socket) return;
 
+    // Handle receiving drawing data from other users
     const handleDraw = (data: DrawingData) => {
-      if (data.userId !== socket.id) {
-        setDrawingData(prev => ({
-          ...prev,
-          [data.userId]: [...(prev[data.userId] || []), data]
-        }));
+      setDrawingData(prev => ({
+        ...prev,
+        [data.userId]: [...(prev[data.userId] || []), data]
+      }));
 
-        if (selectedUser?.id === data.userId && otherCanvasRef.current) {
-          const ctx = otherCanvasRef.current.getContext('2d');
-          if (!ctx) return;
+      // Draw on the appropriate canvas regardless of view mode
+      const canvas = data.userId === socket.id ? mainCanvasRef.current : otherCanvasRef.current;
+      if (!canvas) return;
 
-          ctx.strokeStyle = data.color;
-          ctx.lineWidth = data.size;
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-          ctx.beginPath();
-          ctx.moveTo(data.startX, data.startY);
-          data.points.forEach(point => {
-            ctx.lineTo(point.x, point.y);
-          });
-          ctx.stroke();
-        }
-      }
+      ctx.strokeStyle = data.color;
+      ctx.lineWidth = data.size;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      ctx.beginPath();
+      ctx.moveTo(data.startX, data.startY);
+      data.points.forEach(point => {
+        ctx.lineTo(point.x, point.y);
+      });
+      ctx.stroke();
     };
 
+    // Handle canvas clearing
     const handleClearCanvas = (userId: string) => {
-      if (userId !== socket.id) {
-        if (selectedUser?.id === userId && otherCanvasRef.current) {
-          const ctx = otherCanvasRef.current.getContext('2d');
-          if (ctx) {
-            ctx.clearRect(0, 0, otherCanvasRef.current.width, otherCanvasRef.current.height);
-          }
-        }
-        
-        setDrawingData(prev => ({
-          ...prev,
-          [userId]: []
-        }));
+      setDrawingData(prev => ({
+        ...prev,
+        [userId]: []
+      }));
+
+      const canvas = userId === socket.id ? mainCanvasRef.current : otherCanvasRef.current;
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
     };
+
+    // Handle initial state when joining
+    socket.on('currentState', (state: CanvasState) => {
+      setDrawingData(state);  // Now the types are compatible
+      Object.entries(state).forEach(([userId, drawings]) => {
+        drawings.forEach((drawing: DrawingData) => {
+          const canvas = userId === socket.id ? mainCanvasRef.current : otherCanvasRef.current;
+          if (!canvas) return;
+          drawOnCanvas(drawing);
+        });
+      });
+    });
 
     socket.on('draw', handleDraw);
     socket.on('clearCanvas', handleClearCanvas);
@@ -1036,6 +1090,7 @@ function App() {
     return () => {
       socket.off('draw', handleDraw);
       socket.off('clearCanvas', handleClearCanvas);
+      socket.off('currentState');
     };
   }, [socket, selectedUser]);
 
