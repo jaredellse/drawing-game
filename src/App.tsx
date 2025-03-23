@@ -315,13 +315,16 @@ function App() {
       transports: ['polling', 'websocket'],
       upgrade: true,
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       forceNew: true,
       path: '/socket.io',
-      withCredentials: true,
+      withCredentials: false,
       autoConnect: true,
-      timeout: 20000
+      timeout: 20000,
+      extraHeaders: {
+        'Access-Control-Allow-Origin': '*'
+      }
     });
 
     setSocket(newSocket);
@@ -343,14 +346,15 @@ function App() {
       console.error('Socket connection error:', error);
       // Try to reconnect with polling if WebSocket fails
       if (error.message.includes('websocket')) {
-        newSocket.io.opts.transports = ['polling', 'websocket'];
+        console.log('Falling back to polling transport');
+        newSocket.io.opts.transports = ['polling'];
       }
     });
 
     newSocket.on('disconnect', (reason) => {
       console.log('Disconnected from server:', reason);
-      if (reason === 'io server disconnect') {
-        // Reconnect if server initiated disconnect
+      if (reason === 'io server disconnect' || reason === 'transport close') {
+        console.log('Attempting to reconnect...');
         newSocket.connect();
       }
     });

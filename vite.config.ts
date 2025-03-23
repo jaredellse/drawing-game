@@ -10,14 +10,10 @@ export default defineConfig({
       '/socket.io': {
         target: 'http://localhost:3002',
         ws: true,
-        changeOrigin: true,
-        secure: false
+        changeOrigin: true
       }
     },
-    cors: {
-      origin: '*',
-      methods: ['GET', 'POST']
-    }
+    cors: true
   },
   preview: {
     port: 5173,
@@ -39,6 +35,7 @@ export default defineConfig({
     emptyOutDir: true,
   },
   define: {
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
+    'process.env.VITE_SOCKET_URL': JSON.stringify(process.env.VITE_SOCKET_URL)
   }
 })

@@ -19,12 +19,28 @@ const clientURL = isDevelopment
 
 const io = new Server(httpServer, {
   cors: {
-    origin: clientURL,
-    methods: ["GET", "POST"],
-    credentials: true
+    origin: '*',  // Allow all origins in production
+    methods: ["GET", "POST", "OPTIONS"],
+    credentials: false,  // Disable credentials since we're using public access
+    allowedHeaders: ["Content-Type", "Authorization"]
   },
   transports: ['polling', 'websocket'],
-  allowEIO3: true
+  allowEIO3: true,
+  pingTimeout: 60000,
+  pingInterval: 25000
+});
+
+// Add CORS middleware for Express
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'false');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
 });
 
 // Serve static files from the client build directory in production
