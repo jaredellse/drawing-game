@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import './App.css';
 import { BrushIcon, PaletteIcon, CanvasIcon, ViewIcon, SplitIcon, VideoIcon, VideosIcon, TrashIcon } from './icons';
@@ -34,8 +34,7 @@ interface DrawingDataMap {
 }
 
 interface ViewMode {
-  type: 'single' | 'split';
-  showThumbnail: boolean;
+  type: 'canvas' | 'split' | 'video';
 }
 
 // Define types for the shapes
@@ -277,6 +276,10 @@ interface CanvasState {
   [userId: string]: DrawingData[];
 }
 
+interface MenuState {
+  activeMenu: 'brush' | 'color' | 'view' | 'none';
+}
+
 function App() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [userName, setUserName] = useState('');
@@ -300,7 +303,7 @@ function App() {
   const [context, setContext] = useState<CanvasRenderingContext2D | null>(null);
   const [isToolbarCollapsed, setIsToolbarCollapsed] = useState(false);
   const [userStreams, setUserStreams] = useState<UserStreams>({});
-  const [viewMode, setViewMode] = useState<ViewMode>({ type: 'single', showThumbnail: true });
+  const [viewMode, setViewMode] = useState<ViewMode>({ type: 'canvas' });
   const otherCanvasRef = useRef<HTMLCanvasElement>(null);
   const [isVideoVisible, setIsVideoVisible] = useState(true);
   const [isCameraOn, setIsCameraOn] = useState(true);
@@ -310,6 +313,7 @@ function App() {
   const [isParticipantViewVisible, setIsParticipantViewVisible] = useState(true);
   const [isVideoSidebarCollapsed, setIsVideoSidebarCollapsed] = useState(false);
   const [isViewingOther, setIsViewingOther] = useState(false);
+  const [menuState, setMenuState] = useState<MenuState>({ activeMenu: 'none' });
 
   // Initialize socket connection
   useEffect(() => {
@@ -676,8 +680,7 @@ function App() {
 
   const toggleView = () => {
     setViewMode(prev => ({
-      type: prev.type === 'single' ? 'split' : 'single',
-      showThumbnail: prev.type === 'split'
+      type: prev.type === 'canvas' ? 'split' : 'canvas'
     }));
   };
 
@@ -1115,6 +1118,50 @@ function App() {
     };
   }, [socket, selectedUser]);
 
+  // Handle menu item click
+  const handleMenuClick = (menu: MenuState['activeMenu']) => {
+    setMenuState(prev => ({
+      activeMenu: prev.activeMenu === menu ? 'none' : menu
+    }));
+  };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.menu-item')) {
+        setMenuState({ activeMenu: 'none' });
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  // Add clear canvas handler
+  const handleClearCanvas = useCallback(() => {
+    const canvas = mainCanvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    socket?.emit('clearCanvas');
+  }, [socket]);
+
+  // Handle user selection
+  const handleUserSelect = (user: User) => {
+    setSelectedUser(user);
+    setViewMode({ type: 'split' });
+    setIsViewingOther(true);
+  };
+
+  // Update view mode handler
+  const handleViewModeChange = (type: ViewMode['type']) => {
+    setViewMode({ type });
+  };
+
   if (!isJoined) {
     return (
       <div className="join-screen">
@@ -1141,95 +1188,93 @@ function App() {
 
   return (
     <div className="app-container">
-      <div className={`toolbar ${isToolbarCollapsed ? 'collapsed' : ''}`}>
-        <button 
-          className={`toolbar-toggle ${isToolbarCollapsed ? 'collapsed' : ''}`}
-          onClick={() => setIsToolbarCollapsed(!isToolbarCollapsed)}
-          title={isToolbarCollapsed ? "Expand Toolbar" : "Collapse Toolbar"}
-        >
-          <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none">
-            <polyline points="18 15 12 9 6 15" />
-          </svg>
-        </button>
-        <div className="tool-group">
+      <div className="top-menu">
+        {/* Brush Size Menu */}
+        <div className={`menu-item ${menuState.activeMenu === 'brush' ? 'active' : ''}`}
+             onClick={() => handleMenuClick('brush')}>
           <BrushIcon />
-          <div className="brush-sizes">
-            {BRUSH_SIZES.map((size) => (
-              <button
-                key={size}
-                className={`brush-size-button ${selectedBrushSize === size ? 'selected' : ''}`}
-                onClick={() => handleBrushSizeChange(size)}
-              >
-                <div
-                  className="brush-size-indicator"
-                  style={{ width: size, height: size }}
-                />
-              </button>
-            ))}
+          <div className="menu-dropdown">
+            <div className="brush-sizes">
+              {[2, 4, 6, 8, 10].map((size) => (
+                <button
+                  key={size}
+                  className={`brush-size-button ${selectedBrushSize === size ? 'selected' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleBrushSizeChange(size);
+                    setMenuState({ activeMenu: 'none' });
+                  }}
+                >
+                  <div className="dot" style={{ width: size, height: size }} />
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="tool-group">
+        {/* Color Palette Menu */}
+        <div className={`menu-item ${menuState.activeMenu === 'color' ? 'active' : ''}`}
+             onClick={() => handleMenuClick('color')}>
           <PaletteIcon />
-          <div className="color-palette">
-            {COLORS.map((color) => (
-              <button
-                key={color}
-                className={`color-button ${selectedColor === color ? 'selected' : ''}`}
-                style={{ 
-                  backgroundColor: color,
-                  width: '30px',
-                  height: '30px',
-                  border: selectedColor === color ? '3px solid #666' : '1px solid #ccc',
-                  borderRadius: '50%',
-                  margin: '4px',
-                  cursor: 'pointer'
-                }}
-                onClick={() => handleColorClick(color)}
-                title={color}
-              />
-            ))}
+          <div className="menu-dropdown">
+            <div className="color-palette">
+              {['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#FFFFFF'].map((color) => (
+                <button
+                  key={color}
+                  className={`color-button ${selectedColor === color ? 'selected' : ''}`}
+                  style={{ backgroundColor: color }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleColorClick(color);
+                    setMenuState({ activeMenu: 'none' });
+                  }}
+                />
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="tool-group">
-          <CanvasIcon />
-          <div className="color-palette">
-            {BACKGROUND_COLORS.map((color) => (
-              <button
-                key={color}
-                className={`color-button ${selectedBackgroundColor === color ? 'selected' : ''}`}
-                style={{ backgroundColor: color }}
-                onClick={() => setSelectedBackgroundColor(color)}
-                title={color}
-              />
-            ))}
+        {/* View Mode Menu */}
+        <div className={`menu-item ${menuState.activeMenu === 'view' ? 'active' : ''}`}
+             onClick={() => handleMenuClick('view')}>
+          <ViewIcon />
+          <div className="menu-dropdown">
+            <button
+              className={`brush-size-button ${viewMode.type === 'canvas' ? 'selected' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewModeChange('canvas');
+                setMenuState({ activeMenu: 'none' });
+              }}
+            >
+              <CanvasIcon /> Canvas Only
+            </button>
+            <button
+              className={`brush-size-button ${viewMode.type === 'split' ? 'selected' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewModeChange('split');
+                setMenuState({ activeMenu: 'none' });
+              }}
+            >
+              <SplitIcon /> Split View
+            </button>
+            <button
+              className={`brush-size-button ${viewMode.type === 'video' ? 'selected' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewModeChange('video');
+                setMenuState({ activeMenu: 'none' });
+              }}
+            >
+              <VideosIcon /> Video Only
+            </button>
           </div>
         </div>
 
-        <div className="tool-group">
-          <div className="preset-buttons">
-            <button className="tool-button" onClick={() => drawPresetOutline('dog')}>🐕</button>
-            <button className="tool-button" onClick={() => drawPresetOutline('cat')}>🐱</button>
-            <button className="tool-button" onClick={() => drawPresetOutline('bunny')}>🐰</button>
-            <button className="tool-button" onClick={() => drawPresetOutline('smiley')}>😊</button>
-          </div>
-        </div>
-
-        <div className="tool-group">
-          <button 
-            className={`tool-button ${viewMode.type === 'split' ? 'active' : ''}`} 
-            onClick={toggleView}
-          >
-            <SplitIcon />
-          </button>
-          <button 
-            className="tool-button clear-button"
-            onClick={clearCanvas}
-            title="Clear Canvas"
-          >
-            <TrashIcon />
-          </button>
+        {/* Clear Canvas Button */}
+        <div className="menu-item" onClick={handleClearCanvas}>
+          <TrashIcon />
         </div>
       </div>
 
@@ -1320,7 +1365,7 @@ function App() {
                 className={`preview-window ${selectedUser?.id === user.id ? 'selected' : ''}`}
                 onClick={() => {
                   setSelectedUser(user);
-                  setViewMode({ type: 'split', showThumbnail: true });
+                  setViewMode({ type: 'split' });
                   setIsViewingOther(true);
                 }}
               >
@@ -1349,6 +1394,18 @@ function App() {
           <polyline points="9 6 15 12 9 18" />
         </svg>
       </button>
+
+      <div className="users-list">
+        {users.map((user) => (
+          <div
+            key={user.id}
+            className="user-item"
+            onClick={() => handleUserSelect(user)}
+          >
+            {user.name}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
