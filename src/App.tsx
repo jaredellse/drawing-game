@@ -308,7 +308,7 @@ function App() {
   // Initialize socket connection
   useEffect(() => {
     const SOCKET_URL = import.meta.env.PROD 
-      ? 'https://drawing-game-production.up.railway.app'  // We'll update this after deployment
+      ? 'https://drawing-game-server-production.up.railway.app'
       : 'http://localhost:3002';
 
     const newSocket = io(SOCKET_URL, {
@@ -327,7 +327,7 @@ function App() {
 
     // Socket event handlers
     newSocket.on('connect', () => {
-      console.log('Connected to server');
+      console.log('Connected to server at:', SOCKET_URL);
       // Re-join the game if we were previously joined
       if (userName) {
         newSocket.emit('join', {
